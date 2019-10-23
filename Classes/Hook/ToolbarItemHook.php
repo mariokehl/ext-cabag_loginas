@@ -40,7 +40,7 @@ class ToolbarItemHook implements \TYPO3\CMS\Backend\Toolbar\ToolbarItemInterface
                 ->getQueryBuilderForTable('fe_users');
             $this->users = $queryBuilder->select('*')
                 ->from('fe_users')
-                ->where($queryBuilder->expr()->eq('email', $queryBuilder->createNamedParameter($email, \PDO::PARAM_STRING)))
+                ->where($queryBuilder->expr()->eq('email', $queryBuilder->createNamedParameter($email, \PDO::PARAM_STR)))
                 ->execute()
                 ->fetchAll();
         } else {
