@@ -41,6 +41,7 @@ class ToolbarItemHook implements \TYPO3\CMS\Backend\Toolbar\ToolbarItemInterface
             $this->users = $queryBuilder->select('*')
                 ->from('fe_users')
                 ->where($queryBuilder->expr()->eq('email', $queryBuilder->createNamedParameter($email, \PDO::PARAM_STR)))
+                ->setMaxResults(15)
                 ->execute()
                 ->fetchAll();
         } else {
@@ -208,6 +209,7 @@ class ToolbarItemHook implements \TYPO3\CMS\Backend\Toolbar\ToolbarItemInterface
                 ->where(
                     $queryBuilder->expr()->eq('domainName', $queryBuilder->createNamedParameter($domainArray['host'], \PDO::PARAM_STR))
                 )
+                ->setMaxResults(1)
                 ->execute()
                 ->fetch();
         } else {
