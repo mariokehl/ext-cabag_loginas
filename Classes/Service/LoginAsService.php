@@ -2,10 +2,12 @@
 
 namespace Cabag\CabagLoginas\Service;
 
+use TYPO3\CMS\Core\Session\Backend\DatabaseSessionBackend;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
 
 /**
  * This file is part of the TYPO3 CMS project.
@@ -19,7 +21,7 @@ use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
  *
  * The TYPO3 project - inspiring people to share!
  */
-class LoginAsService extends \TYPO3\CMS\Sv\AuthenticationService
+class LoginAsService extends AbstractAuthenticationService
 {
 
     protected $rowdata;
@@ -27,15 +29,16 @@ class LoginAsService extends \TYPO3\CMS\Sv\AuthenticationService
     public function getUser()
     {
         $row = false;
-        $cabag_loginas_data = \TYPO3\CMS\Core\Utility\GeneralUtility::_GP('tx_cabagloginas');
+        $cabag_loginas_data = GeneralUtility::_GP('tx_cabagloginas');
 
         if (isset($cabag_loginas_data['verification'])) {
             $ses_id = $_COOKIE['be_typo_user'];
+            $databaseSessionBackend = GeneralUtility::makeInstance(DatabaseSessionBackend::class);
+            $hashedSesId = $databaseSessionBackend->hash($ses_id);
             $verificationHash = $cabag_loginas_data['verification'];
             unset($cabag_loginas_data['verification']);
-            if (md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] . $ses_id . serialize($cabag_loginas_data)) === $verificationHash &&
+            if (md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] . $hashedSesId . serialize($cabag_loginas_data)) === $verificationHash &&
                 $cabag_loginas_data['timeout'] > time()) {
-                if (class_exists(ConnectionPool::class)) {
                     $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
                     $queryBuilder->getRestrictions()
                         ->removeAll()
@@ -49,13 +52,9 @@ class LoginAsService extends \TYPO3\CMS\Sv\AuthenticationService
                         )
                         ->execute()
                         ->fetchAll();
-                } else {
-                    $user = $GLOBALS['TYPO3_DB']->exec_SELECTgetRows(
-                        '*', 'fe_users', 'uid = ' . intval($cabag_loginas_data['userid'])
-                    );
-                }
                 if ($user[0]) {
-                    $row = $this->rowdata = $user[0];
+                    $row = $user[0];
+                    $this->rowdata = $user[0];
                     if (is_object($GLOBALS["TSFE"]->fe_user)) {
                         $GLOBALS["TSFE"]->fe_user->setKey('ses', 'tx_cabagloginas', true);
                     }
@@ -70,9 +69,13 @@ class LoginAsService extends \TYPO3\CMS\Sv\AuthenticationService
     {
         $OK = 100;
 
+        if (!$this->rowdata) {
+            $this->getUser();
+        }
         if ($this->rowdata['uid'] == $user['uid']) {
             $OK = 200;
         }
+
 
         return $OK;
     }
