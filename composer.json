@@ -3,7 +3,6 @@
   "description": "CAB Login As",
   "type": "typo3-cms-extension",
   "license": "MIT",
-
   "replace": {
     "cabag_loginas": "self.version"
   },
@@ -14,6 +13,11 @@
   "autoload": {
     "psr-4": {
       "Cabag\\CabagLoginas\\": "Classes/"
+    }
+  },
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "cabag_loginas"
     }
   }
 }
