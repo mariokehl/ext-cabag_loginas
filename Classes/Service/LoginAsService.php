@@ -76,7 +76,6 @@ class LoginAsService extends AbstractAuthenticationService
             $OK = 200;
         }
 
-
         return $OK;
     }
 

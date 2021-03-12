@@ -3,9 +3,6 @@
   "description": "CAB Login As",
   "type": "typo3-cms-extension",
   "license": "MIT",
-  "replace": {
-    "cabag_loginas": "self.version"
-  },
   "require": {
     "typo3/cms-core": ">=10.4",
     "php": "^7"
