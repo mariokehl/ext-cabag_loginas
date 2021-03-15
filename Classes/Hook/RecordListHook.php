@@ -32,8 +32,8 @@ class RecordListHook implements \TYPO3\CMS\Recordlist\RecordList\RecordListHookI
 	public function makeControl($table, $row, $cells, &$parentObject) {
 		if ($table == 'fe_users') {
 			$loginas = $this->loginAsObj->getLoginAsIconInTable($row);
-			// moveRight is only used for pages, therefore we use it here
-			$cells['moveRight'] = $loginas;
+			// view is not used for fe_users, therefore we use it here
+			$cells['view'] = $loginas;
 		}
 
 		return $cells;
