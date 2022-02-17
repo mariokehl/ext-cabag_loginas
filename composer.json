@@ -4,7 +4,7 @@
   "type": "typo3-cms-extension",
   "license": "MIT",
   "require": {
-    "typo3/cms-core": ">=10.4",
+    "typo3/cms-core": "^10.4",
     "php": "^7"
   },
   "autoload": {
@@ -15,6 +15,12 @@
   "extra": {
     "typo3/cms": {
       "extension-key": "cabag_loginas"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "typo3/class-alias-loader": true,
+      "typo3/cms-composer-installers": true
     }
   }
 }
