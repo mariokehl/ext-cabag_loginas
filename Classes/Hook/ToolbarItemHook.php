@@ -18,12 +18,14 @@ namespace Cabag\CabagLoginas\Hook;
 use PDO;
 use TYPO3\CMS\Backend\Controller\BackendController;
 use TYPO3\CMS\Backend\Toolbar\ToolbarItemInterface;
-use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Backend\Utility\IconUtility;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Imaging\Icon;
+use TYPO3\CMS\Core\Session\Backend\DatabaseSessionBackend;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
@@ -125,27 +127,29 @@ class ToolbarItemHook implements ToolbarItemInterface
         if ($user['felogin_redirectPid']) {
             $parameterArray['redirecturl'] = $this->getRedirectUrl($user['felogin_redirectPid']);
         } else {
-            // Check group settings for any redirect page
-            if (class_exists(ConnectionPool::class)) {
-                $connectionPool = GeneralUtility::makeInstance(ConnectionPool::class);
-                $connection = $connectionPool->getConnectionForTable('fe_users');
-                $sql = "SELECT fe_groups.felogin_redirectPid FROM fe_users, fe_groups WHERE fe_groups.felogin_redirectPid != \"\" AND fe_groups.uid IN (fe_users.usergroup) AND fe_users.uid = " . $user['uid'] . " LIMIT 1";
-                $userGroupResult = $connection->query($sql);
-                $userGroup = reset($userGroupResult);
-            } else {
-                $userGroup = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
-                    'fe_groups.felogin_redirectPid', 'fe_users, fe_groups', 'fe_groups.felogin_redirectPid != "" AND fe_groups.uid IN (fe_users.usergroup) AND fe_users.uid = ' . $user['uid']
-                );
-            }
-            if (is_array($userGroup) && !empty($userGroup['felogin_redirectPid'])) {
-                $parameterArray['redirecturl'] = $this->getRedirectUrl($userGroup['felogin_redirectPid']);
-            } elseif (rtrim(GeneralUtility::getIndpEnv('TYPO3_SITE_URL'), '/') !== ($domain = $this->getRedirectForCurrentDomain($user['pid']))) {
-                // Any manual redirection defined in sys_domain record
-                $parameterArray['redirecturl'] = rawurlencode($domain);
-            }
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                ->getQueryBuilderForTable('fe_users');
+            $userGroup = $queryBuilder
+                ->select('fg.felogin_redirectPid')
+                ->from('fe_users', 'fu')
+                ->join(
+                    'fu',
+                    'fe_groups',
+                    'fg',
+                    'fg.uid in (fu.usergroup)'
+                )
+                ->where(
+                    'fg.felogin_redirectPid != \'\'',
+                    'fu.uid = ' . $user['uid']
+                )->execute()
+                ->fetchAssociative();
+
+            $parameterArray['redirecturl'] = $this->getRedirectUrl($userGroup['felogin_redirectPid'] ?? $user['pid']);
         }
-        $ses_id = $GLOBALS['BE_USER']->user['ses_id'];
-        $parameterArray['verification'] = md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] . $ses_id . serialize($parameterArray));
+        $ses_id = $_COOKIE['be_typo_user'];
+        $databaseSessionBackend = GeneralUtility::makeInstance(DatabaseSessionBackend::class);
+        $hashedSesId = $databaseSessionBackend->hash($ses_id);
+        $parameterArray['verification'] = md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] . $hashedSesId . serialize($parameterArray));
         $link = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . '?' . GeneralUtility::implodeArrayForUrl('tx_cabagloginas', $parameterArray);
 
         return $link;
@@ -191,7 +195,9 @@ class ToolbarItemHook implements ToolbarItemInterface
     public function getRedirectForCurrentDomain($pid)
     {
         $extConf = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['cabag_loginas']);
-        $domain = BackendUtility::getViewDomain($pid);
+
+        $domain = $this->getRealDomain($pid);
+
         $domainArray = parse_url($domain);
 
         if (empty($extConf['enableDomainBasedRedirect'])) {
@@ -236,7 +242,7 @@ class ToolbarItemHook implements ToolbarItemInterface
      */
     protected function getRedirectUrl($pageId)
     {
-        return rawurlencode(BackendUtility::getViewDomain($pageId) . '/index.php?id=' . $pageId);
+        return rawurlencode($this->getRealDomain($pageId) . '/index.php?id=' . $pageId);
     }
 
     /**
@@ -301,6 +307,27 @@ class ToolbarItemHook implements ToolbarItemInterface
     public function getIndex()
     {
         return 50;
+    }
+
+    /**
+     * Get the the real domain of given pid.
+     *
+     * When outside a normal page tree (i.e. global storage), this returns the current domain in which the user
+     * is logged in the backend.
+     *
+     * @param int $pageId
+     * @return string
+     */
+    private function getRealDomain(int $pageId): string
+    {
+        try {
+            $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($pageId);
+            return parse_url($site->getRouter()->generateUri($pageId), PHP_URL_HOST);
+        } catch(SiteNotFoundException $e) {
+            // In some cases, when frontend users are outside a normal page tree (global storage)
+            // just return the domain from which the user is logged in the backend
+            return GeneralUtility::getIndpEnv('HTTP_HOST');
+        }
     }
 
 }
