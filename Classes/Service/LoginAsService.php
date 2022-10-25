@@ -29,16 +29,16 @@ class LoginAsService extends AbstractAuthenticationService
     public function getUser()
     {
         $row = false;
-        $cabag_loginas_data = GeneralUtility::_GP('tx_cabagloginas');
+        $cabagLoginasData = GeneralUtility::_GP('tx_cabagloginas');
 
-        if (isset($cabag_loginas_data['verification'])) {
+        if (isset($cabagLoginasData['verification'])) {
             $ses_id = $_COOKIE['be_typo_user'];
             $databaseSessionBackend = GeneralUtility::makeInstance(DatabaseSessionBackend::class);
             $hashedSesId = $databaseSessionBackend->hash($ses_id);
-            $verificationHash = $cabag_loginas_data['verification'];
-            unset($cabag_loginas_data['verification']);
-            if (md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] . $hashedSesId . serialize($cabag_loginas_data)) === $verificationHash &&
-                $cabag_loginas_data['timeout'] > time()) {
+            $verificationHash = $cabagLoginasData['verification'];
+            unset($cabagLoginasData['verification']);
+            if (md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'] . $hashedSesId . serialize($cabagLoginasData)) === $verificationHash &&
+                $cabagLoginasData['timeout'] > time()) {
                     $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
                     $queryBuilder->getRestrictions()
                         ->removeAll()
@@ -48,15 +48,15 @@ class LoginAsService extends AbstractAuthenticationService
                         ->select('*')
                         ->from('fe_users')
                         ->where(
-                            $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($cabag_loginas_data['userid'], \PDO::PARAM_INT))
+                            $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($cabagLoginasData['userid'], \PDO::PARAM_INT))
                         )
                         ->execute()
                         ->fetchAll();
                 if ($user[0]) {
                     $row = $user[0];
                     $this->rowdata = $user[0];
-                    if (is_object($GLOBALS["TSFE"]->fe_user)) {
-                        $GLOBALS["TSFE"]->fe_user->setKey('ses', 'tx_cabagloginas', true);
+                    if (is_object($GLOBALS['TSFE']->fe_user)) {
+                        $GLOBALS['TSFE']->fe_user->setKey('ses', 'tx_cabagloginas', true);
                     }
                 }
             }
