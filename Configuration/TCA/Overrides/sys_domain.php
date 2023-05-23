@@ -1,6 +1,8 @@
 <?php
 
-$tx_cabagloginas_extconf = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['cabag_loginas']);
+$tx_cabagloginas_extconf = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
+    \TYPO3\CMS\Core\Configuration\ExtensionConfiguration::class
+)->get('cabag_loginas');
 
 // if enabled, add the fields to the sys_domain
 if (!empty($tx_cabagloginas_extconf['enableDomainBasedRedirect'])) {

@@ -19,6 +19,7 @@ use PDO;
 use TYPO3\CMS\Backend\Controller\BackendController;
 use TYPO3\CMS\Backend\Toolbar\ToolbarItemInterface;
 use TYPO3\CMS\Backend\Utility\IconUtility;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
@@ -194,7 +195,7 @@ class ToolbarItemHook implements ToolbarItemInterface
      */
     public function getRedirectForCurrentDomain($pid)
     {
-        $extConf = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['cabag_loginas']);
+        $extConf = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('cabag_loginas');
 
         $domain = $this->getRealDomain($pid);
 
